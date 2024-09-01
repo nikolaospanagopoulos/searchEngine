@@ -1,3 +1,75 @@
+<script>
+	var timer;
+
+
+	function checkImageExists(url, className, id) {
+		fetch(url)
+			.then(response => {
+				if (response.ok) {
+					if (timer) {
+						clearTimeout(timer)
+					}
+					timer = setTimeout(function() {
+						msnry.layout();
+
+
+					}, 500)
+					var img = document.createElement('img');
+					img.alt = '$altText'
+					img.src = url
+					document.querySelector(className + ' a').append(img);
+					img.addEventListener('click', function() {
+						updateImgClickCount(id);
+					})
+
+				} else {
+					saveAsBroken(id)
+				}
+			})
+			.catch(error => {
+				console.log('Error occurred while checking the image:', error);
+				saveAsBroken(id)
+			});
+	}
+
+	async function saveAsBroken(id) {
+		console.log("broken", id)
+		var res = await fetch("ajax/updateImgBrokenCount.php", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify({
+				id
+			})
+
+
+		});
+		var data = await res.json();
+		console.log(data)
+	}
+
+
+
+
+	async function updateImgClickCount(id) {
+		console.log(id)
+		var res = await fetch("ajax/updateImgClickCount.php", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify({
+				imgId: id
+			})
+
+
+		});
+		var data = await res.json();
+		console.log(data)
+
+	}
+</script>
 <?php
 include("conf.php");
 if (isset($_GET["term"]) && strlen($_GET['term'])) {
@@ -15,12 +87,12 @@ function getNumberOfResults($term)
 
 
 	$query = $con->prepare("
-    SELECT COUNT(*) as total 
-    FROM sites 
-    WHERE title LIKE :term1
-    OR url LIKE :term2
-    OR keywords LIKE :term3
-    OR description LIKE :term4
+SELECT COUNT(*) as total
+FROM sites
+WHERE title LIKE :term1
+OR url LIKE :term2
+OR keywords LIKE :term3
+OR description LIKE :term4
 ");
 
 	$searchTerm = "%" . $term . "%";
@@ -56,14 +128,14 @@ function getResultsInHtml($page, $pageSize, $term)
 	$fromLimit = ($page - 1) * $pageSize;
 	global $con;
 	$query = $con->prepare("
-    SELECT *
-    FROM sites 
-    WHERE title LIKE :term1
-    OR url LIKE :term2
-    OR keywords LIKE :term3
-	OR description LIKE :term4
-	ORDER BY clicks DESC
-    LIMIT :fromLimit, :pageSize
+SELECT *
+FROM sites
+WHERE title LIKE :term1
+OR url LIKE :term2
+OR keywords LIKE :term3
+OR description LIKE :term4
+ORDER BY clicks DESC
+LIMIT :fromLimit, :pageSize
 ");
 
 	$searchTerm = "%" . $term . "%";
@@ -82,14 +154,70 @@ function getResultsInHtml($page, $pageSize, $term)
 		$description = trimField($row['description'], 230);
 
 		$resultsHtml .= "<div class='resultContainer'>
-			<h3 class='title'>
-<a class='result' href='$url' data-linkId='$id'>$title</a>
-</h3>
-<span class='url'>$url</span>
-<span class='description'>$description</span>
-			
-			
-			</div>";
+		<h3 class='title'>
+			<a class='result' href='$url' data-linkId='$id'>$title</a>
+		</h3>
+		<span class='url'>$url</span>
+		<span class='description'>$description</span>
+
+
+	</div>";
+	}
+	$resultsHtml .= "</div>";
+	return $resultsHtml;
+}
+function getResultsInHtmlForImg($page, $pageSize, $term)
+{
+	//pageStartingResult
+	$fromLimit = ($page - 1) * $pageSize;
+	global $con;
+	$query = $con->prepare("
+SELECT *
+FROM images
+WHERE (title LIKE :term1
+OR alt LIKE :term2)
+AND broken=0
+ORDER BY clicks DESC
+LIMIT :fromLimit, :pageSize
+");
+
+	$searchTerm = "%" . $term . "%";
+	$query->bindParam(":term1", $searchTerm, PDO::PARAM_STR);
+	$query->bindParam(":term2", $searchTerm, PDO::PARAM_STR);
+	$query->bindParam(":fromLimit", $fromLimit, PDO::PARAM_INT);
+	$query->bindValue(":pageSize", $pageSize, PDO::PARAM_INT);
+	$query->execute();
+	$resultsHtml = "<div class='imageResults'>";
+	$imageCount = 0;
+	while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
+		$imageCount++;
+		$imageId = $row['id'];
+		$title = $row['title'];
+		$siteUrl = $row['siteUrl'];
+		$alt = $row['alt'];
+		$imageUrl = $row['imageUrl'];
+
+		if ($title && !$alt) {
+			$displayText = $title;
+		} else if (!$title && $alt) {
+			$displayText = $alt;
+		} else {
+			$displayText = $imageUrl;
+		}
+		$altText = $alt ? $alt : "";
+
+		$resultsHtml .= "<div class='grid-item image$imageCount'>
+		<a data-fancybox='gallery' href='$imageUrl' data-caption='$displayText'>
+			<script>
+				document.addEventListener('DOMContentLoaded', () => {
+					checkImageExists('$imageUrl', '.image$imageCount', $imageId)
+				})
+			</script>
+			<span class='details'>$displayText</span>
+		</a>
+
+
+	</div>";
 	}
 	$resultsHtml .= "</div>";
 	return $resultsHtml;
@@ -105,6 +233,10 @@ function getResultsInHtml($page, $pageSize, $term)
 	<title>Welcome to Goodle</title>
 
 	<link rel="stylesheet" type="text/css" href="assets/css/style.css">
+
+	<script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.umd.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
+
 
 </head>
 
@@ -176,6 +308,7 @@ function getResultsInHtml($page, $pageSize, $term)
 
 				$numResults = getNumberOfResultsForImgs($term);
 				$pageLimit = 30;
+				echo getResultsInHtmlForImg($page, $pageLimit, $term);
 			}
 			echo  "<p class='resultsCount'>" . $numResults . " results found</p>";
 
@@ -226,6 +359,7 @@ function getResultsInHtml($page, $pageSize, $term)
 		</div>
 
 	</div>
+	<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.js"></script>
 	<script>
 		document.body.addEventListener('click', async (e) => {
 			if (e.target.className == 'result') {
@@ -243,6 +377,23 @@ function getResultsInHtml($page, $pageSize, $term)
 				console.log(result)
 			}
 		})
+
+		if (window.location.href.match(/images/)) {
+			var elem = document.querySelector('.imageResults');
+			window.msnry = new Masonry(elem, {
+				// options
+				itemSelector: '.grid-item',
+				columnWidth: 200,
+				gutter: 5,
+				isInitLayout: false,
+			});
+			msnry.on('layoutComplete', function(items) {
+				document.querySelectorAll('.grid-item img').forEach(i => {
+					i.style.visibility = 'visible'
+				})
+			});
+			Fancybox.bind("[data-fancybox]", {});
+		}
 	</script>
 
 </body>
