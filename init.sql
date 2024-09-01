@@ -29,4 +29,39 @@ ALTER TABLE `sites`
 --
 ALTER TABLE `sites`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+
+CREATE TABLE `images` (
+  `id` int(11) NOT NULL,
+  `siteUrl` varchar(512) NOT NULL,
+  `imageUrl` varchar(512) NOT NULL,
+  `alt` varchar(512) NOT NULL,
+  `title` varchar(512) NOT NULL,
+  `clicks` int(11) NOT NULL DEFAULT 0,
+  `broken` tinyint(4) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `images`
+--
+ALTER TABLE `images`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `images`
+--
+ALTER TABLE `images`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+
+
+
 COMMIT;

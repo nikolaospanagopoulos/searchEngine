@@ -44,6 +44,48 @@ function parseRobotsTxt($url)
 }
 
 
+function insertIntoDb($url, $title, $description, $keywords)
+{
+	if (linkExists($url)) {
+		return;
+	}
+	global $con;
+	$query = $con->prepare("INSERT INTO sites(url,title,description,keywords) VALUES(:url,:title,:description,:keywords)");
+
+	$query->bindParam(":url", $url);
+	$query->bindParam(":title", $title);
+	$query->bindParam(":description", $description);
+	$query->bindParam(":keywords", $keywords);
+
+
+	$query->execute();
+}
+
+function insertImgIntoDb($siteUrl, $imageUrl, $alt, $title)
+{
+	global $con;
+	$query = $con->prepare("INSERT INTO images(siteUrl,imageUrl,alt,title) VALUES(:siteUrl,:imageUrl,:alt,:title)");
+
+	$query->bindParam(":siteUrl", $siteUrl);
+	$query->bindParam(":imageUrl", $imageUrl);
+	$query->bindParam(":alt", $alt);
+	$query->bindParam(":title", $title);
+
+
+	$query->execute();
+}
+function linkExists($url)
+{
+	global $con;
+	$query = $con->prepare("SELECT * FROM sites WHERE url=:url");
+
+	$query->bindParam(":url", $url);
+
+	$query->execute();
+
+	return $query->rowCount() != 0;
+}
+
 
 
 function isUrlAllowed($url, $rules, $userAgent = "*")
@@ -57,8 +99,8 @@ function isUrlAllowed($url, $rules, $userAgent = "*")
 				return false;
 			}
 		}
-		foreach ($rulesForAgent['Allow'] as $allwedPath) {
-			if (preg_match('/' . str_replace("*", ".*", preg_quote($allwedPath, '/')) . '/', $path)) {
+		foreach ($rulesForAgent['Allow'] as $allowedPath) {
+			if (preg_match('/' . str_replace("*", ".*", preg_quote($allowedPath, '/')) . '/', $path)) {
 				return true;
 			}
 		}
@@ -124,13 +166,13 @@ function getDetails($href)
 	if ($content) {
 		@$document->loadHTML(file_get_contents($href, false, $context));
 		$titles = $document->getElementsByTagName('title');
-		if ($titles->length > 0) {
-			echo "<h3>" . $titles->item(0)->nodeValue . "</h3>";
-			$title = $titles->item(0)->nodeValue;
-			$title = str_replace("\n", "", $title);
-			if (trim($title) == "") {
-				return;
-			}
+		if (sizeof($titles) == 0 || $titles->item(0) == NULL) {
+			return;
+		}
+		$title = $titles->item(0)->nodeValue;
+		$title = str_replace("\n", "", $title);
+		if (trim($title) == "") {
+			return;
 		}
 		$description = "";
 		$keywords = "";
@@ -146,6 +188,19 @@ function getDetails($href)
 		$description = str_replace("\n", "", $description);
 		$keywords = str_replace("\n", "", $keywords);
 		echo "Url: " . $href . " title: " . $title . " description: " . $description . " keywords: " . $keywords;
+		insertIntoDb($href, $title, $description, $keywords);
+
+		static $visitedImg = [];
+		$images = $document->getElementsByTagName('img');
+		foreach ($images as $img) {
+			$src = $img->getAttribute('src');
+			$alt = $img->getAttribute('alt');
+			$title = $img->getAttribute('title');
+			if (!in_array($src, $visitedImg)) {
+				$visitedImg[] = $src;
+				insertImgIntoDb($href, $src, $alt, $title);
+			}
+		}
 	}
 }
 function urlToAbsolute($baseUrl, $relativeUrl)
@@ -165,4 +220,4 @@ function urlToAbsolute($baseUrl, $relativeUrl)
 	}
 	return $relativeUrl;
 }
-crawlPage("https://edition.cnn.com");
+crawlPage("https://www.bbc.com/");
