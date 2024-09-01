@@ -2,7 +2,7 @@
 	var timer;
 
 
-	function checkImageExists(url, className, id) {
+	function checkImageExists(url, className, id, alt) {
 		fetch(url)
 			.then(response => {
 				if (response.ok) {
@@ -15,7 +15,7 @@
 
 					}, 500)
 					var img = document.createElement('img');
-					img.alt = '$altText'
+					img.alt = alt
 					img.src = url
 					document.querySelector(className + ' a').append(img);
 					img.addEventListener('click', function() {
@@ -194,7 +194,7 @@ LIMIT :fromLimit, :pageSize
 		$imageId = $row['id'];
 		$title = $row['title'];
 		$siteUrl = $row['siteUrl'];
-		$alt = $row['alt'];
+		$alt = addslashes($row['alt']);
 		$imageUrl = $row['imageUrl'];
 
 		if ($title && !$alt) {
@@ -210,7 +210,7 @@ LIMIT :fromLimit, :pageSize
 		<a data-fancybox='gallery' href='$imageUrl' data-caption='$displayText'>
 			<script>
 				document.addEventListener('DOMContentLoaded', () => {
-					checkImageExists('$imageUrl', '.image$imageCount', $imageId)
+					checkImageExists('$imageUrl', '.image$imageCount', '$imageId', '$altText')
 				})
 			</script>
 			<span class='details'>$displayText</span>
@@ -230,7 +230,7 @@ LIMIT :fromLimit, :pageSize
 <html>
 
 <head>
-	<title>Welcome to Goodle</title>
+	<title>Welcome to Doodle</title>
 
 	<link rel="stylesheet" type="text/css" href="assets/css/style.css">
 
