@@ -120,7 +120,7 @@ function getRulesForAgent($rules, $userAgent)
 	return null;
 }
 
-function crawlPage($url, $depth = 1)
+function crawlPage($url, $depth = 2)
 {
 	static $visited = [];
 	if ($depth <= 0 || isset($visited[$url])) {
